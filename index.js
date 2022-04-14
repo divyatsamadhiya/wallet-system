@@ -2,12 +2,12 @@ const express = require("express");
 const app = express();
 require("dotenv").config();
 const dbAuthenticate = require("./dbAuthenticate");
-const router = require("./routes/userRoutes");
-const jwtVerify = require("./middlewares/jwt");
+const userRoute = require("./routes/userRoutes");
+const walletRoute = require("./routes/walletRoutes");
 
 //middlewares
 app.use(express.json());
-app.use("/api/v1", router);
+app.use("/api/v1", [userRoute, walletRoute]);
 
 const server = async () => {
     try {

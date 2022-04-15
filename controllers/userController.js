@@ -21,7 +21,11 @@ const registerUser = async (req, res) => {
 
     try {
         const user = await User.create({ name, email, password: hashPassword });
-        const wallet = await Wallet.create({ balance: 0, userId: user.id });
+        const wallet = await Wallet.create({
+            balance: 0,
+            transactions: JSON.parse("{}"),
+            userId: user.id,
+        });
         res.status(201).json({ id: user.id, name, email });
     } catch (error) {
         res.status(400).send(error);
@@ -45,9 +49,9 @@ const loginUser = async (req, res) => {
         return res.status(400).json({ msg: "Incorrect password" });
 
     const jwtToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
-        expiresIn: "300s",
+        expiresIn: "3000s",
     });
-    res.header("auth-token", jwtToken);
+    res.header("authorization", `Bearer ${jwtToken}`);
     res.status(201).json({
         status: "Success",
         msg: "Logged In",

@@ -11,7 +11,7 @@ router.use(jwtVerify);
 
 router.put("/credit/:userId", creditAmount);
 router.put("/debit/:userId", debitAmount);
-router.get("/transaction", checkTransactions);
-router.get("/balance/:id", checkBalance);
+router.get("/transactions/:userId", checkTransactions);
+router.get("/balance/:userId", checkBalance);
 
 module.exports = router;

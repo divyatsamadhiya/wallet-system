@@ -1,13 +1,16 @@
-// const Wallet = require("../models/walletModel");
-// const User = require("../models/userModel");
 const { User, Wallet } = require("../models/index");
 
 const creditAmount = async (req, res) => {
-    const { balance } = req.body;
+    const { balance, transactions } = req.body;
+    let date = new Date().toLocaleString();
     try {
         let walletBalance = await Wallet.findOne({
             where: { userId: req.params.userId },
         });
+
+        if (req.user.id != req.params.userId)
+            return res.status(401).send("Access denied");
+
         let updatedBalance = walletBalance.balance + balance;
         if (updatedBalance > 500)
             return res.status(400).json({
@@ -15,8 +18,17 @@ const creditAmount = async (req, res) => {
                 msg: "You cannot hold more than 500$ in your wallet",
             });
 
+        let transaction = {
+            Status: "Success",
+            Credited: balance,
+        };
+        walletBalance.transactions[date] = transaction;
+
         const addBalance = await Wallet.update(
-            { balance: updatedBalance },
+            {
+                balance: updatedBalance,
+                transactions: walletBalance.transactions,
+            },
             { where: { userId: req.params.userId } }
         );
         return res.status(200).json({
@@ -31,10 +43,14 @@ const creditAmount = async (req, res) => {
 
 const debitAmount = async (req, res) => {
     const { balance } = req.body;
+    let date = new Date().toLocaleString();
     try {
         let walletBalance = await Wallet.findOne({
             where: { userId: req.params.userId },
         });
+        if (req.user.id != req.params.userId)
+            return res.status(401).send("Access denied");
+
         let updatedBalance = walletBalance.balance - balance;
         if (updatedBalance < 0)
             return res.status(400).json({
@@ -42,8 +58,17 @@ const debitAmount = async (req, res) => {
                 msg: "You dont have enough amount in your wallet to withdraw",
             });
 
+        let transaction = {
+            Status: "Success",
+            Debited: balance,
+        };
+        walletBalance.transactions[date] = transaction;
+
         const subtractBalance = await Wallet.update(
-            { balance: updatedBalance },
+            {
+                balance: updatedBalance,
+                transactions: walletBalance.transactions,
+            },
             { where: { userId: req.params.userId } }
         );
         return res.status(200).json({
@@ -57,10 +82,12 @@ const debitAmount = async (req, res) => {
 };
 
 const checkBalance = async (req, res) => {
-    Wallet.belongsTo(User);
+    // Wallet.belongsTo(User);
+    if (req.user.id != req.params.userId)
+        return res.status(401).send("Access denied");
     try {
         const userBalance = await User.findOne({
-            where: { id: req.params.id },
+            where: { id: req.params.userId },
             include: Wallet,
         });
         return res.status(200).json({
@@ -73,6 +100,46 @@ const checkBalance = async (req, res) => {
     }
 };
 
-const checkTransactions = async (req, res) => {};
+const checkTransactions = async (req, res) => {
+    const id = req.params.userId;
+    if (req.user.id != id) return res.status(401).send("Access denied");
+    let { page } = req.query;
+    try {
+        const user = await User.findOne({
+            where: { id: id },
+            include: Wallet,
+        });
+        let transactions = Object.entries(user.wallet.transactions);
+
+        if (Object.keys(user.wallet.transactions).length <= 10) {
+            return res.status(200).json({
+                userId: user.id,
+                name: user.name,
+                trasactions: user.wallet.transactions,
+            });
+        } else {
+            if (page) {
+                let limit = 10 * page - 10;
+                transactions = transactions.slice(limit, limit + 10);
+                trasactions = Object.fromEntries(transactions);
+                return res.status(200).json({
+                    userId: user.id,
+                    name: user.name,
+                    trasactions: transactions,
+                });
+            } else {
+                transactions = transactions.slice(0, 10);
+                trasactions = Object.fromEntries(transactions);
+                return res.status(200).json({
+                    userId: user.id,
+                    name: user.name,
+                    trasactions: transactions,
+                });
+            }
+        }
+    } catch (error) {
+        res.status(404).send(error);
+    }
+};
 
 module.exports = { creditAmount, debitAmount, checkTransactions, checkBalance };
